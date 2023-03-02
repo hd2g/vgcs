@@ -1,10 +1,11 @@
 module google_custom_search
 
+import net.http
 import google_custom_search.api
-import google_custom_search.response
-import google_custom_search.query
+import google_custom_search.response { Response }
+import google_custom_search.requests
 
-pub struct Client {
+pub fn list(queries []string, cx string) !Response {
+	client := api.new_client[http.Response](cx, requests.new())!
+	return client.list(queries)
 }
-
-// pub fn (self Client) search() !Response
