@@ -4,7 +4,9 @@ import os
 import x.json2
 
 pub struct Config {
-	cx string
+pub:
+	cx  string
+	key string
 }
 
 pub fn from_json(raw_json string) !Config {

@@ -6,7 +6,8 @@ SRC := google_custom_search
 
 VC := v
 
-.PHONY: all clean test build
+.PHONY:  all clean test build
+.SILENT: all clean test build
 
 all: clean test build
 
@@ -19,3 +20,4 @@ test:
 build:
 	mkdir -p $(OUT_DIR) && \
 	$(VC) $(OUT_BIN).v -W -o $(OUT)
+

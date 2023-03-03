@@ -4,80 +4,108 @@ import net.http
 import x.json2 { Any }
 
 pub struct Response {
+pub:
 	items []Item
 	len   int
 }
 
 struct Item {
-	kind         string
-	title        string
-	html_title   string
-	link         string
-	display_link string
-	mime         string
-	file_format  string
-	image        Image
-	labels       []Label
+pub:
+	kind               string
+	title              string
+	html_title         string
+	link               string
+	display_link       string
+	snippet            string
+	html_snippet       string
+	formatted_url      string
+	html_formatted_url string
+	pagemap            Pagemap
 }
 
-struct Image {
-	context_link     string
-	height           int
-	width            int
-	byte_size        int
-	thumbnail_link   string
-	thumbnail_height string
-	thumbnail_width  string
+struct Pagemap {
+pub:
+	cse_thumbnail []CseThumbnail
+	cse_image     []CseImage
 }
 
-struct Label {
-	name          string
-	display_name  string
-	label_with_op string
+struct CseThumbnail {
+pub:
+	src    string
+	width  i32
+	height i32
 }
 
-fn image_from_map(m map[string]Any) !Image {
-	return Image{
-		context_link: m['contextLink']!.str()
-		height: m['height']!.int()
-		width: m['width']!.int()
-		byte_size: m['byteSize']!.int()
-		thumbnail_link: m['thumbnailLink']!.str()
-		thumbnail_height: m['thumbnailHeight']!.str()
-		thumbnail_width: m['thumbnailWidth']!.str()
+struct CseImage {
+pub:
+	src string
+}
+
+fn cse_thumbnail_from_map(m map[string]Any) !CseThumbnail {
+	return CseThumbnail{
+		src: m['src']!.str()
+		width: m['width']!.str().parse_int(10, 32) or {
+			return error('pagmap.cse_thumbnail.width isnt integer')
+		}
+		height: m['height']!.str().parse_int(10, 32) or {
+			return error('pagmap.cse_thumbnail.height isnt integer')
+		}
 	}
 }
 
-fn label_from_map(m map[string]Any) !Label {
-	return Label{
-		name: m['name']!.str()
-		display_name: m['displayName']!.str()
-		label_with_op: m['labelWithOp']!.str()
+fn cse_image_from_map(m map[string]Any) !CseImage {
+	return CseImage{
+		src: m['src']!.str()
 	}
+}
+
+fn pagemap_from_map(m map[string]Any) !Pagemap {
+	cse_thumbnail := if a := m['cse_thumbnail'] {
+		a.arr().map(cse_thumbnail_from_map(it.as_map()) or {
+			return error('failed convert item to cse_thumbnail: ${err}')
+		})
+	} else {
+		[]CseThumbnail{}
+	}
+
+	cse_image := if a := m['cse_image'] {
+		a.arr().map(cse_image_from_map(it.as_map()) or {
+			return error('failed convert item to cse_image: ${err}')
+		})
+	} else {
+		[]CseImage{}
+	}
+
+	return Pagemap{cse_thumbnail, cse_image}
 }
 
 fn item_from_map(m map[string]Any) !Item {
+	pagemap := if mpagemap := m['pagemap'] {
+		pagemap_from_map(mpagemap.as_map()) or { return error('failed convert to Pagemap: ${err}') }
+	} else {
+		Pagemap{}
+	}
+
 	return Item{
 		kind: m['kind']!.str()
 		title: m['title']!.str()
 		html_title: m['htmlTitle']!.str()
 		link: m['link']!.str()
 		display_link: m['displayLink']!.str()
-		mime: m['mime']!.str()
-		file_format: m['fileFormat']!.str()
-		image: image_from_map(m['image']!.as_map()) or {
-			return error('failed convert item to image: ${err}')
-		}
-		labels: m['labels']!.arr().map(label_from_map(it.as_map()) or {
-			return error('failed convert item to label: ${err}')
-		})
+		snippet: m['snippet']!.str()
+		html_snippet: m['htmlSnippet']!.str()
+		formatted_url: m['formattedUrl']!.str()
+		html_formatted_url: m['htmlFormattedUrl']!.str()
+		pagemap: pagemap
 	}
 }
 
 // OPTIMIZE: 遅い...
 //   - json2.raw_decodeのせいかも
 pub fn from_map(m map[string]Any) !Response {
-	items := m['items']!.arr().map(item_from_map(it.as_map()) or { Item{} })
+	items := m['items']!.arr().map(item_from_map(it.as_map()) or {
+		return error('failed convert to Item: ${err}')
+	})
 	len := items.len
 	return Response{
 		items: items
@@ -87,7 +115,11 @@ pub fn from_map(m map[string]Any) !Response {
 
 pub fn from_http_response(resp http.Response) !Response {
 	if int(resp.status_code / 100) != 2 {
-		return error('cannot convert from failed response: ${resp.status_msg}')
+		mut msg := []string{}
+		msg << 'response code: ${resp.status_code}'
+		msg << resp.body
+		msg << 'cannot convert from failed response: ${resp.status_msg}'
+		return error(msg.join('\n'))
 	}
 	jso := json2.raw_decode(resp.body)!
 	return from_map(jso.as_map())
