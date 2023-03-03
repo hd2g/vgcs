@@ -1,6 +1,7 @@
 module response
 
 import net.http
+import json
 import x.json2 { Any }
 
 pub struct Response {
@@ -9,7 +10,7 @@ pub:
 	len   int
 }
 
-struct Item {
+pub struct Item {
 pub:
 	kind               string
 	title              string
@@ -23,20 +24,20 @@ pub:
 	pagemap            Pagemap
 }
 
-struct Pagemap {
+pub struct Pagemap {
 pub:
 	cse_thumbnail []CseThumbnail
 	cse_image     []CseImage
 }
 
-struct CseThumbnail {
+pub struct CseThumbnail {
 pub:
 	src    string
 	width  i32
 	height i32
 }
 
-struct CseImage {
+pub struct CseImage {
 pub:
 	src string
 }
@@ -123,4 +124,10 @@ pub fn from_http_response(resp http.Response) !Response {
 	}
 	jso := json2.raw_decode(resp.body)!
 	return from_map(jso.as_map())
+}
+
+pub fn (self Response) encode_json() string {
+	// TODO: json2.encode[Response](self)にしたい
+	//   - なんがfile.vでエラー出る
+	return json.encode(self)
 }

@@ -20,4 +20,3 @@ test:
 build:
 	mkdir -p $(OUT_DIR) && \
 	$(VC) $(OUT_BIN).v -W -o $(OUT)
-

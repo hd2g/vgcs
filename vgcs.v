@@ -25,8 +25,12 @@ fn execute_list(cmd Command) ! {
 		}
 	}
 
-	resp := gcs.list(cfg.cx, cfg.key, cmd.args)!
-	println(resp.str())
+	client := gcs.Client{
+		cx: cfg.cx
+		key: cfg.key
+	}
+	resp := client.list(cmd.args)!
+	println(resp.encode_json())
 }
 
 fn main() {

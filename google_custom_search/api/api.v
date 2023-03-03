@@ -1,6 +1,5 @@
 module api
 
-import os
 import google_custom_search.query { Query, queries_of_strings }
 import google_custom_search.response { Response }
 import google_custom_search.requests { Requestable }
